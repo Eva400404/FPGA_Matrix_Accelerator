@@ -34,6 +34,12 @@ module systolic_pe #(
     output logic [2*WIDTH+1:0] acc_out
 );
 
+(* use_dsp = "yes" *) logic [2*WIDTH-1:0] product;
+
+always_comb begin
+    product = a_in * b_in;
+end
+
 always_ff @(posedge clk) begin
     if (rst) begin
         a_out   <= '0;
@@ -48,7 +54,7 @@ always_ff @(posedge clk) begin
     else if (en) begin
         a_out   <= a_in;              // pass A to the right
         b_out   <= b_in;              // pass B downward
-        acc_out <= acc_out + a_in * b_in;
+        acc_out <= acc_out + product;
     end
 end
 

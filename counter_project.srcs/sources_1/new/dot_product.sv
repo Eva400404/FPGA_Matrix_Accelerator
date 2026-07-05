@@ -32,8 +32,8 @@ module dot_product #(
     output logic [2*WIDTH+1:0] result,
     output logic done
     );
-
-logic [2*WIDTH-1:0] product [N];
+    
+(* use_dsp = "yes" *) logic [2*WIDTH-1:0] product [N];
 logic [2*WIDTH+1:0] sum_comb;
 
 always_comb begin
