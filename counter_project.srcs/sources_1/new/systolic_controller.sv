@@ -28,17 +28,20 @@ module systolic_controller #(
 
     output logic clear,
     output logic en,
+    output logic read_en,
     output logic done,
 
-    output logic [$clog2(3*N)-1:0] run_count
+    output logic [$clog2(3*N)-1:0] run_count,
+    output logic [$clog2(3*N)-1:0] read_count
 );
 
 localparam TOTAL_CYCLES = 3*N - 2;
 localparam COUNT_WIDTH  = $clog2(3*N);
 
-typedef enum logic [1:0] {
+typedef enum logic [2:0] {
     IDLE,
     CLEAR,
+    PREFETCH,
     RUN,
     DONE
 } state_t;
@@ -75,6 +78,10 @@ always_comb begin
         end
 
         CLEAR: begin
+            next_state = PREFETCH;
+        end
+        
+        PREFETCH: begin
             next_state = RUN;
         end
 
@@ -92,14 +99,41 @@ always_comb begin
 end
 
 always_comb begin
+    if (state == RUN)
+        read_count = count + 1'b1;
+    else
+        read_count = '0;
+end
+
+always_comb begin
     clear = 1'b0;
     en    = 1'b0;
+    read_en = 1'b0;
     done  = 1'b0;
 
     case (state)
-        CLEAR: clear = 1'b1;
-        RUN:   en    = 1'b1;
-        DONE:  done  = 1'b1;
+        CLEAR: begin
+            clear = 1'b1;
+        end
+
+        PREFETCH: begin
+            read_en = 1'b1;
+        end
+
+        RUN: begin
+            en = 1'b1;
+            read_en = 1'b1;
+        end
+
+        DONE: begin
+            done = 1'b1;
+        end
+
+        default: begin
+            clear = 1'b0;
+            en    = 1'b0;
+            done  = 1'b0;
+        end
     endcase
 end
 
