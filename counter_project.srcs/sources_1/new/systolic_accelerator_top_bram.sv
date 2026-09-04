@@ -4,7 +4,9 @@ module systolic_accelerator_top_bram #(
     parameter WIDTH = 8,
     parameter N = 4,
     parameter ADDR_WIDTH = $clog2(N),
-    parameter COUNT_WIDTH = $clog2(3*N)
+    parameter COUNT_WIDTH = $clog2(3*N),
+    parameter int C_WIDTH = 2*WIDTH + $clog2(N),
+    parameter int RESULT_AW = $clog2(N*N)
 )(
     input  logic clk,
     input  logic rst,
@@ -17,7 +19,9 @@ module systolic_accelerator_top_bram #(
     input  logic [ADDR_WIDTH-1:0] load_col,
     input  logic [WIDTH-1:0] load_data,
 
-    output logic [2*WIDTH+$clog2(N)-1:0] C [N][N],
+    input  logic                         result_re,
+    input  logic [$clog2(N*N)-1:0]      result_addr,
+    output logic [C_WIDTH-1:0]           result_data,
     output logic done
 );
 
@@ -41,6 +45,20 @@ logic [WIDTH-1:0]      B_din  [N];
 logic [WIDTH-1:0]      A_dout [N];
 logic [WIDTH-1:0]      B_dout [N];
 
+logic [C_WIDTH-1:0] C_internal [0:N-1][0:N-1];
+localparam int RESULT_DEPTH = N*N;
+
+logic                     store_en;
+logic [RESULT_AW-1:0]     store_count;
+
+logic                     result_mem_en;
+logic                     result_mem_we;
+logic [RESULT_AW-1:0]     result_mem_addr;
+logic [C_WIDTH-1:0]       result_mem_din;
+
+logic [$clog2(N)-1:0]     store_row;
+logic [$clog2(N)-1:0]     store_col;
+
 systolic_controller #(
     .N(N)
 ) ctrl (
@@ -52,7 +70,9 @@ systolic_controller #(
     .read_en(read_en),
     .done(done),
     .run_count(run_count),
-    .read_count(read_count)
+    .read_count(read_count),
+    .store_en(store_en),
+    .store_count(store_count)
 );
 
 // ------------------------------------------------------------
@@ -165,7 +185,46 @@ systolic_array_NxN #(
     .en(en),
     .a_left(a_left),
     .b_top(b_top),
-    .C(C)
+    .C(C_internal)
 );
 
+// ------------------------------------------------------------
+// Calculate rows/columns for result BRAMs
+// ------------------------------------------------------------
+always_comb begin
+    store_row = store_count / N;
+    store_col = store_count % N;
+end
+
+always_comb begin
+    result_mem_en   = 1'b0;
+    result_mem_we   = 1'b0;
+    result_mem_addr = '0;
+    result_mem_din  = '0;
+
+    if (store_en) begin
+        result_mem_en   = 1'b1;
+        result_mem_we   = 1'b1;
+        result_mem_addr = store_count;
+        result_mem_din  = C_internal[store_row][store_col];
+    end
+    else if (result_re) begin
+        result_mem_en   = 1'b1;
+        result_mem_we   = 1'b0;
+        result_mem_addr = result_addr;
+    end
+end
+
+result_bram #(
+    .WIDTH(C_WIDTH),
+    .DEPTH(RESULT_DEPTH),
+    .ADDR_WIDTH(RESULT_AW)
+) result_mem (
+    .clk  (clk),
+    .en   (result_mem_en),
+    .we   (result_mem_we),
+    .addr (result_mem_addr),
+    .din  (result_mem_din),
+    .dout (result_data)
+);
 endmodule

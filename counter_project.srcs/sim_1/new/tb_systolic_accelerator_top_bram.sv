@@ -26,6 +26,12 @@ parameter N          = 4;
 parameter ADDR_WIDTH = $clog2(N);
 parameter C_WIDTH    = 2*WIDTH + $clog2(N);
 
+parameter RESULT_ADDR_WIDTH = $clog2(N*N);
+
+logic result_re;
+logic [RESULT_ADDR_WIDTH-1:0] result_addr;
+logic [C_WIDTH-1:0] result_data;
+
 logic clk;
 logic rst;
 logic start;
@@ -41,7 +47,6 @@ logic [WIDTH-1:0] load_data;
 logic [WIDTH-1:0] A_mat [N][N];
 logic [WIDTH-1:0] B_mat [N][N];
 logic [C_WIDTH-1:0] expected_C [N][N];
-logic [C_WIDTH-1:0] C [N][N];
 
 systolic_accelerator_top_bram #(
     .WIDTH(WIDTH),
@@ -57,7 +62,11 @@ systolic_accelerator_top_bram #(
     .load_col(load_col),
     .load_data(load_data),
 
-    .C(C),
+    
+    .result_re(result_re),
+    .result_addr(result_addr),
+    .result_data(result_data),
+    
     .done(done)
 );
 
@@ -102,6 +111,10 @@ initial begin
     load_row  = '0;
     load_col  = '0;
     load_data = '0;
+    
+    result_re   = 1'b0;
+    result_addr = '0;
+
     test_pass = 1'b1;
 
     // --------------------------------------------------------
@@ -194,35 +207,35 @@ initial begin
 
     // --------------------------------------------------------
     // Display result
-    // --------------------------------------------------------
-    $display("C matrix:");
-
+    // --------------------------------------------------------       
+    
     for (int i = 0; i < N; i++) begin
         for (int j = 0; j < N; j++) begin
-            $write("%0d ", C[i][j]);
-        end
-        $write("\n");
-    end
+            @(negedge clk);
 
-    // --------------------------------------------------------
-    // Check result
-    // --------------------------------------------------------
-    for (int i = 0; i < N; i++) begin
-        for (int j = 0; j < N; j++) begin
-            if (C[i][j] !== expected_C[i][j]) begin
+            result_re   = 1'b1;
+            result_addr = i*N + j;
+
+            @(posedge clk);
+            #1;
+
+            if (result_data !== expected_C[i][j]) begin
                 test_pass = 1'b0;
 
                 $display(
                     "Mismatch C[%0d][%0d]: got %0d, expected %0d",
                     i,
                     j,
-                    C[i][j],
+                    result_data,
                     expected_C[i][j]
                 );
             end
         end
     end
 
+    @(negedge clk);
+    result_re = 1'b0;
+    
     if (test_pass)
         $display("TEST PASSED");
     else

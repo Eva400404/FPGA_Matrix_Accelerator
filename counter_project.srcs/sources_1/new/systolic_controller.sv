@@ -32,7 +32,10 @@ module systolic_controller #(
     output logic done,
 
     output logic [$clog2(3*N)-1:0] run_count,
-    output logic [$clog2(3*N)-1:0] read_count
+    output logic [$clog2(3*N)-1:0] read_count,
+    
+    output logic                     store_en,
+    output logic [$clog2(N*N)-1:0]  store_count
 );
 
 localparam TOTAL_CYCLES = 3*N - 2;
@@ -43,12 +46,17 @@ typedef enum logic [2:0] {
     CLEAR,
     PREFETCH,
     RUN,
+    STORE,
     DONE
 } state_t;
 
 state_t state, next_state;
 
 logic [COUNT_WIDTH-1:0] count;
+
+localparam int STORE_WIDTH = $clog2(N*N);
+
+logic [STORE_WIDTH-1:0] store_counter;
 
 assign run_count = count;
 
@@ -60,13 +68,27 @@ always_ff @(posedge clk) begin
     else begin
         state <= next_state;
 
-        if (state == RUN)
-            count <= count + 1;
-        //else if (state == CLEAR)
-        else
+        if (state != RUN)
             count <= '0;
+        else if (count < TOTAL_CYCLES - 1)
+            count <= count + 1'b1;
+        //else if (state == CLEAR)
     end
 end
+
+always_ff @(posedge clk) begin
+    if (rst) begin
+        store_counter <= '0;
+    end
+    else begin
+        if (state != STORE)
+            store_counter <= '0;
+        else if (store_counter < N*N-1)
+            store_counter <= store_counter + 1'b1;
+    end
+end
+
+assign store_count = store_counter;
 
 always_comb begin
     next_state = state;
@@ -87,6 +109,11 @@ always_comb begin
 
         RUN: begin
             if (count == TOTAL_CYCLES - 1)
+                next_state = STORE;
+        end
+        
+        STORE: begin
+            if (store_counter == N*N - 1)
                 next_state = DONE;
         end
 
@@ -109,6 +136,7 @@ always_comb begin
     clear = 1'b0;
     en    = 1'b0;
     read_en = 1'b0;
+    store_en = 1'b0;
     done  = 1'b0;
 
     case (state)
@@ -123,6 +151,10 @@ always_comb begin
         RUN: begin
             en = 1'b1;
             read_en = 1'b1;
+        end
+        
+        STORE: begin
+            store_en = 1'b1;
         end
 
         DONE: begin
