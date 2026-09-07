@@ -4,7 +4,7 @@ A parameterized matrix-multiplication accelerator implemented in **SystemVerilog
 
 The project explores hardware acceleration of matrix multiplication through parallel multiply-accumulate (MAC) processing elements, FPGA DSP resources, banked BRAM storage, and FSM-based control.
 
-The design is currently under active development. The RTL has been verified through simulation and synthesized in **Xilinx Vivado**; physical FPGA implementation and performance characterization are planned next.
+The design is currently under active development. The RTL has been verified through simulation, synthesized and implemented in **Xilinx Vivado**, and successfully deployed to a **Digilent Basys 3 (Xilinx Artix-7) FPGA**. The current 4x4 accelerator has been validated on physical hardware at **100 MHz**.
 
 ---
 
@@ -123,10 +123,13 @@ PREFETCH
 RUN
   │
   ▼
+STORE
+  │
+  ▼
 DONE
 ```
 
-The `PREFETCH` stage is used because FPGA block RAM uses synchronous reads. The controller accounts for this read latency before data is consumed by the systolic array.
+The `PREFETCH` stage is used because FPGA block RAM uses synchronous reads. The controller accounts for this read latency before data is consumed by the systolic array. After computation, the `STORE` stage writes the completed output matrix C into result BRAM.
 
 This required coordinating BRAM addresses, read counters, systolic-array timing, and the overall computation schedule.
 
@@ -155,6 +158,31 @@ Tests have been performed using nontrivial input matrices to verify data movemen
 
 Individual modules also have dedicated testbenches, including the MAC, PE, systolic array, controller, and BRAM-integrated accelerator.
 
+### Physical FPGA Verification
+
+A synthesizable Basys 3 board wrapper, `basys3_accelerator_top.sv`, replaces the simulation testbench as the external controller. Its FSM loads fixed 4x4 matrices A and B, starts computation, waits for completion, reads matrix C from result BRAM, and checks all 16 values.
+
+The hardware test uses:
+
+```text
+A = B = [ 1   2   3   4
+          5   6   7   8
+          9  10  11  12
+         13  14  15  16 ]
+```
+
+with expected output:
+
+```text
+C = [  90  100  110  120
+      202  228  254  280
+      314  356  398  440
+      426  484  542  600 ]
+```
+
+A pushbutton starts the hardware test, while LEDs indicate completion and pass/fail status. The physical FPGA test completed with both `led_done` and `led_pass` asserted, confirming correct end-to-end matrix multiplication on hardware.
+
+
 ---
 
 ## Synthesis
@@ -172,7 +200,30 @@ Current synthesis work has focused on:
 
 Moving the input matrices from direct top-level signals into BRAM substantially reduces the required top-level I/O while preserving correct matrix-multiplication behavior.
 
-Detailed timing and performance measurements will be added as the implementation progresses.
+### Basys 3 Implementation Results
+
+The current 4x4 design was implemented on the Basys 3 Artix-7 FPGA with a **100 MHz (10 ns)** clock constraint.
+
+| Resource | Used | Available | Utilization |
+|---|---:|---:|---:|
+| Slice LUTs | 202 | 20,800 | 0.97% |
+| Slice Registers | 42 | 41,600 | 0.10% |
+| Slices | 65 | 8,150 | 0.80% |
+| Block RAM Tiles | 4.5 | 50 | 9.0% |
+| DSPs | 16 | 90 | 17.8% |
+| Bonded I/O | 5 | 106 | 4.7% |
+| BUFGCTRL | 1 | 32 | 3.1% |
+
+The 16 inferred DSP resources correspond to the 16 processing elements in the 4x4 systolic array.
+
+Post-implementation timing analysis reports:
+
+- **Worst Negative Slack (WNS): +1.480 ns**
+- **Total Negative Slack (TNS): 0.000 ns**
+- **Worst Hold Slack (WHS): +0.129 ns**
+- **Failing setup/hold endpoints: 0**
+
+All user-specified timing constraints are met at 100 MHz.
 
 ---
 
@@ -205,6 +256,7 @@ systolic_array_NxN.sv
 systolic_controller.sv
 systolic_accelerator_top.sv
 systolic_accelerator_top_bram.sv
+basys3_accelerator_top.sv
 ```
 
 The repository also contains earlier modules and intermediate implementations developed while building and validating the accelerator architecture.
@@ -232,17 +284,21 @@ Vivado-generated simulation, synthesis, implementation, cache, and temporary fil
 - [x] Banked BRAM storage for matrix B
 - [x] BRAM-aware prefetch/read scheduling
 - [x] Verification with nontrivial input matrices
+- [x] Store output matrix C in BRAM
+- [x] Reduce top-level FPGA I/O with BRAM-backed storage
+- [x] Basys 3 board-control wrapper
+- [x] FPGA synthesis and implementation
+- [x] Post-implementation timing analysis at 100 MHz
+- [x] Deploy design to Digilent Basys 3 / Artix-7
+- [x] Validate 4x4 matrix multiplication on physical hardware
 
 ### In Progress / Planned
 
-- [ ] Store output matrix C in BRAM
-- [ ] Reduce remaining top-level I/O
-- [ ] Complete FPGA implementation and timing analysis
-- [ ] Measure maximum clock frequency
+- [ ] Characterize resource scaling for multiple array sizes (`N = 2, 4, 8`, where feasible)
+- [ ] Measure maximum achievable clock frequency
 - [ ] Measure accelerator latency and throughput
+- [ ] Add UART host interface for loading arbitrary matrices and reading results
 - [ ] Add fixed-point arithmetic support
-- [ ] Deploy the design to a physical FPGA board
-- [ ] Validate matrix multiplication on hardware
 - [ ] Compare FPGA performance against a software implementation
 
 ---
@@ -266,7 +322,9 @@ Vivado-generated simulation, synthesis, implementation, cache, and temporary fil
 
 The project is **actively under development**.
 
-The current accelerator has been validated through RTL simulation and synthesis, including DSP inference and BRAM-based input storage. The next major architectural step is moving the output matrix into BRAM, followed by timing analysis and deployment to physical FPGA hardware.
+The current 4x4 accelerator has been validated end-to-end on a **Digilent Basys 3 Artix-7 FPGA**. The implementation uses banked BRAM for matrix A and B storage, result BRAM for matrix C, an FSM-based controller, and 16 DSP-backed processing elements. It meets a **100 MHz** timing constraint with **+1.480 ns WNS** and produces the expected matrix result on physical hardware.
+
+The next phase focuses on scaling and performance characterization, followed by a UART host interface so arbitrary matrices can be transferred between a computer and the FPGA.
 
 ---
 
