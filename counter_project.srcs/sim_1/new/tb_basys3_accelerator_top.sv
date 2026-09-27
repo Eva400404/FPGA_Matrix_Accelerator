@@ -33,7 +33,7 @@ module tb_basys3_accelerator_top;
     // Instantiate the Basys 3 wrapper
     basys3_accelerator_top #(
         .WIDTH(8),
-        .N(4)
+        .N(2)
     ) dut (
         .clk(clk),
         .btnC(btnC),
@@ -78,6 +78,23 @@ module tb_basys3_accelerator_top;
         wait (led_done == 1);
 
         $finish;
+    end
+    
+    integer accel_cycles;
+    
+    initial begin
+        accel_cycles = 0;
+        
+        // Wait for accelerator starts
+        @(posedge dut.start);
+        
+        // Count until accelerator finishes
+        while (!dut.done) begin
+            @(posedge clk);
+            accel_cycles = accel_cycles + 1;
+        end
+        
+        $display("Accelerator latency = %0d cycles", accel_cycles);
     end
 
 endmodule

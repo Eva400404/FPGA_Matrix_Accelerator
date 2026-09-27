@@ -19,7 +19,8 @@
 // 
 //////////////////////////////////////////////////////////////////////////////////
 module systolic_pe #(
-    parameter WIDTH = 8
+    parameter WIDTH = 8,
+    parameter N = 4
 )(
     input  logic clk,
     input  logic rst,
@@ -31,7 +32,7 @@ module systolic_pe #(
 
     output logic [WIDTH-1:0] a_out,
     output logic [WIDTH-1:0] b_out,
-    output logic [2*WIDTH+1:0] acc_out
+    output logic [2*WIDTH+$clog2(N)-1:0] acc_out
 );
 
 (* use_dsp = "yes" *) logic [2*WIDTH-1:0] product;

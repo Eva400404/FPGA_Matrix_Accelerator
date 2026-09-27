@@ -52,7 +52,8 @@ generate
     for (i = 0; i < N; i++) begin : row_gen
         for (j = 0; j < N; j++) begin : col_gen
             systolic_pe #(
-                .WIDTH(WIDTH)
+                .WIDTH(WIDTH),
+                .N(N)
             ) pe_inst (
                 .clk(clk),
                 .rst(rst),

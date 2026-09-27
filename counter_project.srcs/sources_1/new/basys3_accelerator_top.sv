@@ -22,7 +22,7 @@
 
 module basys3_accelerator_top#(
     parameter WIDTH = 8,
-    parameter N = 4
+    parameter N = 2
 )(
     input logic clk,
     input logic btnC,   //Center button: start
@@ -99,12 +99,12 @@ typedef enum logic [3:0] {
 
 state_t state;
 
-logic [3:0] load_count;
+logic [RESULT_ADDR_WIDTH-1:0] load_count;
 
 logic [ADDR_WIDTH-1:0] current_row;
 logic [ADDR_WIDTH-1:0] current_col;
 
-logic [3:0] result_count;
+logic [RESULT_ADDR_WIDTH-1:0] result_count;
 logic pass_flag;
 
 
@@ -225,7 +225,7 @@ always_ff @(posedge clk) begin
                 
                 if (result_data != expected_result(result_count))
                     pass_flag <= 0;
-                    
+                
                 if (result_count == N*N-1) begin
                     state <= FINISHED;
                 end
@@ -248,30 +248,125 @@ always_ff @(posedge clk) begin
 end
 
 function automatic logic [C_WIDTH-1:0] expected_result(
-    input logic [3:0] addr
+    input logic [RESULT_ADDR_WIDTH-1:0] addr
 );
-    case (addr)
-        4'd0: expected_result = 90;
-        4'd1: expected_result = 100;
-        4'd2: expected_result = 110;
-        4'd3: expected_result = 120;
+    if (N == 2) begin
+        case (addr)
+            4'd0: expected_result = 7;
+            4'd1: expected_result = 10;
+            4'd2: expected_result = 15;
+            4'd3: expected_result = 22;
+            
+            default: expected_result = 0;
+        endcase
+    end
+    
+    else if (N == 4) begin
+        case (addr)
+            4'd0: expected_result = 90;
+            4'd1: expected_result = 100;
+            4'd2: expected_result = 110;
+            4'd3: expected_result = 120;
         
-        4'd4: expected_result = 202;
-        4'd5: expected_result = 228;
-        4'd6: expected_result = 254;
-        4'd7: expected_result = 280;
+            4'd4: expected_result = 202;
+            4'd5: expected_result = 228;
+            4'd6: expected_result = 254;
+            4'd7: expected_result = 280;
         
-        4'd8: expected_result = 314;
-        4'd9: expected_result = 356;
-        4'd10: expected_result = 398;
-        4'd11: expected_result = 440;
+            4'd8: expected_result = 314;
+            4'd9: expected_result = 356;
+            4'd10: expected_result = 398;
+            4'd11: expected_result = 440;
+            
+            4'd12: expected_result = 426;
+            4'd13: expected_result = 484;
+            4'd14: expected_result = 542;
+            4'd15: expected_result = 600;
         
-        4'd12: expected_result = 426;
-        4'd13: expected_result = 484;
-        4'd14: expected_result = 542;
-        4'd15: expected_result = 600;
-        
-        default: expected_result = 0;
+            default: expected_result = 0;
     endcase
+    end
+    
+    else if (N == 8) begin
+        case (addr)
+            0:  expected_result = 1380;
+            1:  expected_result = 1416;
+            2:  expected_result = 1452;
+            3:  expected_result = 1488;
+            4:  expected_result = 1524;
+            5:  expected_result = 1560;
+            6:  expected_result = 1596;
+            7:  expected_result = 1632;
+
+            8:  expected_result = 3236;
+            9:  expected_result = 3336;
+            10: expected_result = 3436;
+            11: expected_result = 3536;
+            12: expected_result = 3636;
+            13: expected_result = 3736;
+            14: expected_result = 3836;
+            15: expected_result = 3936;
+
+            16: expected_result = 5092;
+            17: expected_result = 5256;
+            18: expected_result = 5420;
+            19: expected_result = 5584;
+            20: expected_result = 5748;
+            21: expected_result = 5912;
+            22: expected_result = 6076;
+            23: expected_result = 6240;
+
+            24: expected_result = 6948;
+            25: expected_result = 7176;
+            26: expected_result = 7404;
+            27: expected_result = 7632;
+            28: expected_result = 7860;
+            29: expected_result = 8088;
+            30: expected_result = 8316;
+            31: expected_result = 8544;
+
+            32: expected_result = 8804;
+            33: expected_result = 9096;
+            34: expected_result = 9388;
+            35: expected_result = 9680;
+            36: expected_result = 9972;
+            37: expected_result = 10264;
+            38: expected_result = 10556;
+            39: expected_result = 10848;
+
+            40: expected_result = 10660;
+            41: expected_result = 11016;
+            42: expected_result = 11372;
+            43: expected_result = 11728;
+            44: expected_result = 12084;
+            45: expected_result = 12440;
+            46: expected_result = 12796;
+            47: expected_result = 13152;
+
+            48: expected_result = 12516;
+            49: expected_result = 12936;
+            50: expected_result = 13356;
+            51: expected_result = 13776;
+            52: expected_result = 14196;
+            53: expected_result = 14616;
+            54: expected_result = 15036;
+            55: expected_result = 15456;
+
+            56: expected_result = 14372;
+            57: expected_result = 14856;
+            58: expected_result = 15340;
+            59: expected_result = 15824;
+            60: expected_result = 16308;
+            61: expected_result = 16792;
+            62: expected_result = 17276;
+            63: expected_result = 17760;
+
+            default: expected_result = 0;
+        endcase
+    end
+
+    else begin
+        expected_result = 0;
+    end
 endfunction
 endmodule
